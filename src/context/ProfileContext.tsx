@@ -16,6 +16,7 @@ export interface ProfileData {
   location: string;
   email: string;
   linkedin: string;
+  website: string;
   phone: string;
   portrait: string;
   resume: string;
@@ -67,6 +68,7 @@ const INITIAL_PROFILE: ProfileData = {
   location: defaultSite.location,
   email: defaultSite.email,
   linkedin: defaultSite.linkedin,
+  website: defaultSite.website || "https://sahu-gulshan.github.io/Portfolio/",
   phone: defaultSite.phone,
   portrait: PORTRAIT_IMAGE,
   resume: defaultSite.resume,

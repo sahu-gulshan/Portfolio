@@ -1,4 +1,5 @@
 import { PORTRAIT_IMAGE } from "./portraitBase64";
+import resumePdfAsset from "/Gulshan_Sahu_CV.pdf?url";
 
 export const site = {
   name: "Gulshan Kumar Sahu",
@@ -8,10 +9,12 @@ export const site = {
   location: "",
   email: "gulshan.sahu@hotmail.com",
   linkedin: "https://www.linkedin.com/in/gulshan-sahu/",
+  website: "https://sahu-gulshan.github.io/Portfolio/",
+  websiteDisplay: "sahu-gulshan.github.io/Portfolio",
   phone: "+91 90705 99155",
   portrait: PORTRAIT_IMAGE,
-  resume: "/Gulshan_Sahu_CV.pdf",
-  resumeDrivePreviewUrl: "/Gulshan_Sahu_CV.pdf",
+  resume: resumePdfAsset,
+  resumeDrivePreviewUrl: resumePdfAsset,
   description:
     "Product Manager building AI-powered, data-driven enterprise products at the intersection of business strategy, user experience, and technology.",
   heroHeadline:

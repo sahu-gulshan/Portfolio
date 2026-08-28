@@ -13,6 +13,7 @@ import {
   BadgeCheck,
   Mail,
   Linkedin,
+  Globe,
   Phone,
   MapPin,
   Maximize2,
@@ -37,13 +38,12 @@ export function ResumeModal() {
   const [copiedLink, setCopiedLink] = useState(false);
   const [zoom, setZoom] = useState(100);
 
-  // Actual PDF document URL
-  const pdfUrl = "/Gulshan_Sahu_CV.pdf";
+  // Actual PDF document URL with Vite asset resolution
+  const pdfUrl = site.resume || "./Gulshan_Sahu_CV.pdf";
 
   const handleOpenPdf = (e?: MouseEvent) => {
     if (e) e.preventDefault();
-    const fullUrl = `${window.location.origin}${pdfUrl}`;
-    window.open(fullUrl, "_blank", "noopener,noreferrer");
+    window.open(pdfUrl, "_blank", "noopener,noreferrer");
     track("resume_open_pdf_tab", { from: "modal" });
   };
 
@@ -228,7 +228,7 @@ export function ResumeModal() {
               {/* Top Quick Actions */}
               <div className="flex items-center gap-2">
                 <a
-                  href={`${window.location.origin}${pdfUrl}`}
+                  href={pdfUrl}
                   download="Gulshan_Sahu_CV.pdf"
                   target="_blank"
                   rel="noopener noreferrer"
@@ -325,6 +325,18 @@ export function ResumeModal() {
                         >
                           <Linkedin className="size-3.5 text-accent shrink-0" />
                           <span>LinkedIn Profile</span>
+                        </a>
+                      )}
+                      {(profile.website || site.website) && (
+                        <a
+                          href={profile.website || site.website}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={() => track("portfolio_click", { from: "resume_modal_interactive" })}
+                          className="inline-flex items-center gap-2 hover:text-accent transition-colors leading-none"
+                        >
+                          <Globe className="size-3.5 text-accent shrink-0" />
+                          <span>Live Portfolio</span>
                         </a>
                       )}
                       <div className="inline-flex items-center gap-2 text-muted-foreground leading-none">
@@ -482,7 +494,7 @@ export function ResumeModal() {
 
                     <div className="flex items-center gap-2">
                       <a
-                        href={`${window.location.origin}${pdfUrl}`}
+                        href={pdfUrl}
                         target="_blank"
                         rel="noopener noreferrer"
                         onClick={handleOpenPdf}
@@ -494,7 +506,7 @@ export function ResumeModal() {
                         <span className="sm:hidden">Open Tab</span>
                       </a>
                       <a
-                        href={`${window.location.origin}${pdfUrl}`}
+                        href={pdfUrl}
                         download="Gulshan_Sahu_CV.pdf"
                         onClick={() => track("resume_download", { from: "pdf_view" })}
                         className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-white font-semibold text-xs transition-colors shadow-sm leading-none cursor-pointer"
@@ -537,6 +549,17 @@ export function ResumeModal() {
                               className="text-blue-700 hover:underline font-semibold"
                             >
                               linkedin.com/in/gulshan-sahu
+                            </a>
+                          </span>
+                          <span className="text-slate-800">
+                            Portfolio:{" "}
+                            <a
+                              href="https://sahu-gulshan.github.io/Portfolio/"
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-blue-700 hover:underline font-semibold"
+                            >
+                              sahu-gulshan.github.io/Portfolio
                             </a>
                           </span>
                         </div>

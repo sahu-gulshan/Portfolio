@@ -35,6 +35,14 @@ export function AboutView({ onNavigate }: AboutViewProps) {
                 height={1200}
                 loading="eager"
                 decoding="async"
+                onError={(e) => {
+                  const target = e.currentTarget;
+                  if (!target.src.includes("portrait.png") && !target.src.includes("portrait.jpg")) {
+                    target.src = "./portrait.png";
+                  } else if (target.src.includes("portrait.png")) {
+                    target.src = "./portrait.jpg";
+                  }
+                }}
                 className="w-full rounded-2xl object-cover object-top transition-transform duration-500 hover:scale-[1.01] max-h-[520px]"
               />
             </div>
