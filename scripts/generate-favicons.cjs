@@ -88,23 +88,23 @@ const manifest = {
   name: "Gulshan Kumar Sahu — Product Portfolio",
   short_name: "Gulshan Sahu",
   description: "Product Manager building AI-powered enterprise products at the intersection of business strategy, user experience, and technology.",
-  start_url: "/portfolio/",
+  start_url: "./",
   display: "standalone",
   background_color: "#08080c",
   theme_color: "#08080c",
   icons: [
     {
-      src: "/portfolio/android-chrome-192x192.png",
+      src: "./android-chrome-192x192.png",
       sizes: "192x192",
       type: "image/png",
     },
     {
-      src: "/portfolio/android-chrome-512x512.png",
+      src: "./android-chrome-512x512.png",
       sizes: "512x512",
       type: "image/png",
     },
     {
-      src: "/portfolio/android-chrome-512x512.png",
+      src: "./android-chrome-512x512.png",
       sizes: "512x512",
       type: "image/png",
       purpose: "maskable",
