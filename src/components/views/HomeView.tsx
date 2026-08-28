@@ -12,13 +12,25 @@ import type { NavTab } from "@/components/Nav";
 interface HomeViewProps {
   onNavigate: (tab: NavTab, slug?: string) => void;
   onOpenAiAssistant?: () => void;
+  hasHeroIntroPlayed?: boolean;
+  onHeroIntroComplete?: () => void;
 }
 
-export function HomeView({ onNavigate, onOpenAiAssistant }: HomeViewProps) {
+export function HomeView({
+  onNavigate,
+  onOpenAiAssistant,
+  hasHeroIntroPlayed,
+  onHeroIntroComplete,
+}: HomeViewProps) {
   return (
     <>
       {/* 1. Hero Section */}
-      <Hero onNavigate={onNavigate} onOpenAiAssistant={onOpenAiAssistant} />
+      <Hero
+        onNavigate={onNavigate}
+        onOpenAiAssistant={onOpenAiAssistant}
+        hasHeroIntroPlayed={hasHeroIntroPlayed}
+        onHeroIntroComplete={onHeroIntroComplete}
+      />
 
       {/* Impact Marquee Banner */}
       <ImpactMarquee />

@@ -15,12 +15,16 @@ import type { NavTab } from "../Nav";
 interface HeroProps {
   onNavigate: (tab: NavTab, slug?: string) => void;
   onOpenAiAssistant?: () => void;
+  hasHeroIntroPlayed?: boolean;
+  onHeroIntroComplete?: () => void;
 }
 
-// Track whether hero entrance animation has already played in this page session
-let hasHeroIntroPlayed = false;
-
-export function Hero({ onNavigate, onOpenAiAssistant }: HeroProps) {
+export function Hero({
+  onNavigate,
+  onOpenAiAssistant,
+  hasHeroIntroPlayed = false,
+  onHeroIntroComplete,
+}: HeroProps) {
   const heroRef = useRef<HTMLElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const rightColRef = useRef<HTMLDivElement>(null);
@@ -28,7 +32,7 @@ export function Hero({ onNavigate, onOpenAiAssistant }: HeroProps) {
   const { profile, setIsPersonalizeOpen, setIsResumeOpen } = useProfile();
   const [lens, setLens] = useState<number | null>(null);
 
-  // If already played in this session or reduced motion is enabled, start immediately shifted and intro complete
+  // If reduced motion is requested OR intro already played during this app session, skip intro
   const shouldSkipIntro = reducedMotion || hasHeroIntroPlayed;
   const [isIntroComplete, setIsIntroComplete] = useState(shouldSkipIntro);
   const [isShifted, setIsShifted] = useState(shouldSkipIntro);
@@ -70,16 +74,13 @@ export function Hero({ onNavigate, onOpenAiAssistant }: HeroProps) {
     return () => window.removeEventListener("resize", measureOffset);
   }, [shouldSkipIntro]);
 
-  // Schedule the shift of the constellation from center to right at 2.5s with audio synthesis (first visit / refresh only)
+  // Schedule the shift of the constellation from center to right at 2.5s with audio synthesis (first visit only)
   useEffect(() => {
     if (shouldSkipIntro) {
       setIsShifted(true);
       setIsIntroComplete(true);
       return;
     }
-
-    // Mark that intro has now played in this page session
-    hasHeroIntroPlayed = true;
 
     // Play subtle opening center bloom chime at 250ms
     const bloomTimer = window.setTimeout(() => {
@@ -93,6 +94,7 @@ export function Hero({ onNavigate, onOpenAiAssistant }: HeroProps) {
 
     const shiftTimer = window.setTimeout(() => {
       setIsShifted(true);
+      onHeroIntroComplete?.();
     }, 2500);
 
     return () => {
@@ -100,7 +102,7 @@ export function Hero({ onNavigate, onOpenAiAssistant }: HeroProps) {
       window.clearTimeout(glideSoundTimer);
       window.clearTimeout(shiftTimer);
     };
-  }, [shouldSkipIntro]);
+  }, [shouldSkipIntro, onHeroIntroComplete]);
 
   // Coordinated stagger animation variants for left-side content
   const leftContainerVariants: Variants = {

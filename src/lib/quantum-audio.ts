@@ -713,3 +713,93 @@ export function playFireflyMorphSound() {
   } catch {}
 }
 
+/**
+ * Rich, harmonic welcome chime (Cmaj9 / Fmaj9 warm acoustic Rhodes resonance)
+ * played when visitor activates the audio experience.
+ */
+export function playWelcomeSoundChime() {
+  try {
+    const ctx = getAudioContext();
+    if (!ctx) return;
+    const now = ctx.currentTime;
+
+    // 1. Deep warm foundation tone (C3 = 130.81Hz)
+    const baseOsc = ctx.createOscillator();
+    const baseGain = ctx.createGain();
+    baseOsc.type = "sine";
+    baseOsc.frequency.setValueAtTime(130.81, now);
+    baseOsc.frequency.exponentialRampToValueAtTime(131.0, now + 1.5);
+
+    baseGain.gain.setValueAtTime(0.0001, now);
+    baseGain.gain.exponentialRampToValueAtTime(0.12, now + 0.08);
+    baseGain.gain.exponentialRampToValueAtTime(0.0001, now + 1.8);
+
+    baseOsc.connect(baseGain);
+    baseGain.connect(ctx.destination);
+    baseOsc.start(now);
+    baseOsc.stop(now + 1.85);
+
+    // 2. Warm harmonic chord: E3 (164.81), G3 (196.00), B3 (246.94), D4 (293.66), G4 (392.00)
+    const chordNotes = [
+      { freq: 164.81, delay: 0.00, duration: 1.6, vol: 0.09 },
+      { freq: 196.00, delay: 0.04, duration: 1.7, vol: 0.08 },
+      { freq: 246.94, delay: 0.08, duration: 1.8, vol: 0.08 },
+      { freq: 293.66, delay: 0.12, duration: 1.9, vol: 0.07 },
+      { freq: 392.00, delay: 0.16, duration: 2.0, vol: 0.06 },
+      { freq: 587.33, delay: 0.22, duration: 2.2, vol: 0.05 }, // D5
+    ];
+
+    chordNotes.forEach(({ freq, delay, duration, vol }) => {
+      const osc = ctx.createOscillator();
+      const oscHarmonic = ctx.createOscillator();
+      const gain = ctx.createGain();
+
+      osc.type = "sine";
+      oscHarmonic.type = "triangle";
+
+      const start = now + delay;
+      osc.frequency.setValueAtTime(freq * 0.985, start);
+      osc.frequency.exponentialRampToValueAtTime(freq, start + 0.18);
+
+      oscHarmonic.frequency.setValueAtTime(freq * 2, start);
+
+      gain.gain.setValueAtTime(0.0001, start);
+      gain.gain.exponentialRampToValueAtTime(vol, start + 0.06);
+      gain.gain.exponentialRampToValueAtTime(0.0001, start + duration);
+
+      osc.connect(gain);
+      oscHarmonic.connect(gain);
+      gain.connect(ctx.destination);
+
+      osc.start(start);
+      oscHarmonic.start(start);
+      osc.stop(start + duration + 0.05);
+      oscHarmonic.stop(start + duration + 0.05);
+    });
+
+    // 3. Subtle sparkling crystalline twinkle (B5 -> D6)
+    const sparkles = [
+      { freq: 987.77, delay: 0.35 }, // B5
+      { freq: 1174.66, delay: 0.48 }, // D6
+      { freq: 1567.98, delay: 0.62 }, // G6
+    ];
+
+    sparkles.forEach(({ freq, delay }) => {
+      const sparkleOsc = ctx.createOscillator();
+      const sparkleGain = ctx.createGain();
+      sparkleOsc.type = "sine";
+      sparkleOsc.frequency.setValueAtTime(freq, now + delay);
+
+      sparkleGain.gain.setValueAtTime(0.0001, now + delay);
+      sparkleGain.gain.exponentialRampToValueAtTime(0.025, now + delay + 0.02);
+      sparkleGain.gain.exponentialRampToValueAtTime(0.0001, now + delay + 0.6);
+
+      sparkleOsc.connect(sparkleGain);
+      sparkleGain.connect(ctx.destination);
+
+      sparkleOsc.start(now + delay);
+      sparkleOsc.stop(now + delay + 0.65);
+    });
+  } catch {}
+}
+

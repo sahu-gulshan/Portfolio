@@ -10,6 +10,7 @@ import { Footer } from "@/components/Footer";
 import { Cursor } from "@/components/Cursor";
 import { ScrollProgress } from "@/components/ScrollProgress";
 import { BottomRightControls } from "@/components/BottomRightControls";
+import { WelcomeSoundCapsule } from "@/components/WelcomeSoundCapsule";
 // Direct static import for HomeView (critical rendering path)
 import { HomeView } from "@/components/views/HomeView";
 
@@ -94,6 +95,7 @@ function AppContent() {
   const activeTab = route.tab;
   const activeProjectSlug = route.slug;
 
+  const [hasHeroIntroPlayed, setHasHeroIntroPlayed] = useState(false);
   const { profile } = useProfile();
   const [isAiModalOpen, setIsAiModalOpen] = useState(false);
   const [isRoleMatcherOpen, setIsRoleMatcherOpen] = useState(false);
@@ -337,6 +339,8 @@ function AppContent() {
               <HomeView
                 onNavigate={handleNavigate}
                 onOpenAiAssistant={() => handleOpenAiAssistant("hero_cta")}
+                hasHeroIntroPlayed={hasHeroIntroPlayed}
+                onHeroIntroComplete={() => setHasHeroIntroPlayed(true)}
               />
             )}
 
@@ -371,6 +375,9 @@ function AppContent() {
         onStudioClose={() => setIsStudioOpen(false)}
         onStudioToggle={() => setIsStudioOpen((v) => !v)}
       />
+
+      {/* Floating Welcome Audio Capsule (Bottom Left) */}
+      <WelcomeSoundCapsule />
 
       <Suspense fallback={null}>
         {/* AI PM Strategy Assistant Modal */}
