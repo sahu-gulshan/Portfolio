@@ -409,7 +409,10 @@ function AppContent() {
       </Suspense>
 
       {/* Footer */}
-      <Footer onNavigate={handleNavigate} onToggleTheme={toggleTheme} />
+      <Footer
+        onNavigate={handleNavigate}
+        onToggleTheme={toggleTheme}
+      />
     </div>
   );
 }

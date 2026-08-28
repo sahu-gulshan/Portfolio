@@ -200,7 +200,7 @@ export function AiCommandPalette({ isOpen, onClose, onNavigateToCase }: AiComman
             </div>
           ) : (
             <div className="space-y-4">
-              <div>
+              <div className="grid grid-cols-1 gap-2">
                 <button
                   type="button"
                   onClick={() => {
@@ -212,7 +212,7 @@ export function AiCommandPalette({ isOpen, onClose, onNavigateToCase }: AiComman
                 >
                   <div className="flex items-center gap-2">
                     <FileText className="size-4 text-accent" />
-                    <span className="font-semibold text-accent">Open Official Resume / CV (PDF & Interactive)</span>
+                    <span className="font-semibold text-accent">Resume / CV</span>
                   </div>
                   <ArrowRight className="size-3.5 text-accent group-hover:translate-x-0.5 transition-transform" />
                 </button>

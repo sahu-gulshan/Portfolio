@@ -1,4 +1,15 @@
-<svg width="1200" height="630" viewBox="0 0 1200 630" xmlns="http://www.w3.org/2000/svg">
+const fs = require("fs");
+const { Resvg } = require("@resvg/resvg-js");
+
+// -------------------------------------------------------------
+// FINALIZED PRIMARY SOCIAL CARD: KINETIC MONOLITH & 3D GYROSCOPIC PRODUCT NEXUS
+// Refined Studio Aesthetics:
+// 1. Subtle, diffused ambient warm atmosphere
+// 2. High-precision minimalist vector linework & architectural framing
+// 3. Sophisticated warm copper/ember accents without overpowering saturation
+// 4. Pure 2-font Sans-Serif system (Unbounded & Plus Jakarta Sans)
+// -------------------------------------------------------------
+const svg = `<svg width="1200" height="630" viewBox="0 0 1200 630" xmlns="http://www.w3.org/2000/svg">
   <defs>
     <!-- Technical Millimeter Grid Texture -->
     <pattern id="v4MillimeterGrid" width="28" height="28" patternUnits="userSpaceOnUse">
@@ -228,4 +239,21 @@
       </text>
     </g>
   </g>
-</svg>
+</svg>`;
+
+// Write primary SVG
+fs.writeFileSync("public/og-image.svg", svg);
+
+// Render high-resolution 1200x630 PNG
+const resvg = new Resvg(svg, {
+  fitTo: { mode: "width", value: 1200 },
+  font: {
+    fontDirs: [".fonts"],
+    loadSystemFonts: false,
+    defaultFontFamily: "Plus Jakarta Sans",
+  },
+});
+const pngBuffer = resvg.render().asPng();
+fs.writeFileSync("public/og-image.png", pngBuffer);
+
+console.log(`Successfully generated public/og-image.png (${pngBuffer.length} bytes) and public/og-image.svg!`);
