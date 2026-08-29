@@ -273,12 +273,18 @@ export function stopContainmentStrainSound() {
   } catch {}
 }
 
+let lastPositronSoundTimestamp = 0;
+
 /**
  * Play explosive, multi-layered quantum rupture sound effect when the photon breaks free
  * and transforms into a Positron.
  */
 export function playPositronTransformationSound() {
   try {
+    const nowMs = Date.now();
+    if (nowMs - lastPositronSoundTimestamp < 1500) return;
+    lastPositronSoundTimestamp = nowMs;
+
     const ctx = getAudioContext();
     if (!ctx) return;
 
@@ -369,11 +375,17 @@ export function playPositronTransformationSound() {
   }
 }
 
+let lastRecombSoundTimestamp = 0;
+
 /**
  * Soft harmonic recombination chime when positron re-enters the Hero chamber
  */
 export function playRecombinationSound() {
   try {
+    const nowMs = Date.now();
+    if (nowMs - lastRecombSoundTimestamp < 1500) return;
+    lastRecombSoundTimestamp = nowMs;
+
     const ctx = getAudioContext();
     if (!ctx) return;
 
@@ -396,54 +408,63 @@ export function playRecombinationSound() {
   } catch {}
 }
 
+let lastLensSoundTimestamp = 0;
+
 /**
  * Crystalline optical lens focus & aperture alignment chime
  * Plays when the positron settles above Section 03 heading and transforms into a lens.
+ * Includes a strict 20-second throttle to prevent repeated audio spam.
  */
 export function playLensTransformationSound() {
   try {
+    const nowMs = Date.now();
+    if (nowMs - lastLensSoundTimestamp < 20000) {
+      return;
+    }
+    lastLensSoundTimestamp = nowMs;
+
     const ctx = getAudioContext();
     if (!ctx) return;
 
     const now = ctx.currentTime;
 
-    // 1. Crystal glass harmonic resonance ping
-    const glassNotes = [1046.5, 1318.51, 1567.98, 2093.0]; // C6, E6, G6, C7
+    // 1. Crystal glass harmonic resonance ping (subtle, non-disruptive volume)
+    const glassNotes = [1046.5, 1318.51, 1567.98]; // C6, E6, G6
     glassNotes.forEach((freq, idx) => {
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
 
       osc.type = "sine";
-      osc.frequency.setValueAtTime(freq, now + idx * 0.04);
+      osc.frequency.setValueAtTime(freq, now + idx * 0.05);
 
-      const delay = idx * 0.04;
+      const delay = idx * 0.05;
       gain.gain.setValueAtTime(0.001, now);
-      gain.gain.setValueAtTime(0.045 / (idx + 1), now + delay);
-      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.6 + delay);
+      gain.gain.setValueAtTime(0.025 / (idx + 1), now + delay);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.5 + delay);
 
       osc.connect(gain);
       gain.connect(ctx.destination);
 
       osc.start(now + delay);
-      osc.stop(now + 0.65 + delay);
+      osc.stop(now + 0.55 + delay);
     });
 
     // 2. Optical aperture click / mechanical focus latch
     const clickOsc = ctx.createOscillator();
     const clickGain = ctx.createGain();
     clickOsc.type = "triangle";
-    clickOsc.frequency.setValueAtTime(2400, now + 0.12);
-    clickOsc.frequency.exponentialRampToValueAtTime(400, now + 0.16);
+    clickOsc.frequency.setValueAtTime(2200, now + 0.15);
+    clickOsc.frequency.exponentialRampToValueAtTime(500, now + 0.19);
 
     clickGain.gain.setValueAtTime(0.001, now);
-    clickGain.gain.setValueAtTime(0.05, now + 0.12);
-    clickGain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
+    clickGain.gain.setValueAtTime(0.025, now + 0.15);
+    clickGain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
 
     clickOsc.connect(clickGain);
     clickGain.connect(ctx.destination);
 
-    clickOsc.start(now + 0.12);
-    clickOsc.stop(now + 0.2);
+    clickOsc.start(now + 0.15);
+    clickOsc.stop(now + 0.22);
   } catch {}
 }
 

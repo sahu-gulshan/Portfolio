@@ -69,98 +69,160 @@ const PHOTON_CORE_RADIUS = 2.7;
 const PHOTON_GLOW_RADIUS = 7.5;
 const PHOTON_CORONA_RADIUS = 22;
 
-export function RoamingPhotonBalls({ containerRef }: RoamingPhotonBallsProps) {
-  const reducedMotion = useReducedMotion();
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+export interface SimulationState {
+  time: number;
+  vw: number;
+  vh: number;
+  mouseX: number;
+  mouseY: number;
+  isMouseActive: boolean;
 
-  useEffect(() => {
-    if (reducedMotion) return;
+  // Transformation & Morph States
+  scrollEscapeFrames: number;
+  lensMorph: number;
+  hasPlayedLensSound: boolean;
 
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
+  dartMorph: number;
+  dartboardStayTimer: number;
+  arrowFlight: number;
+  hasStruckDart: boolean;
+  dartImpactTimer: number;
 
-    let animId = 0;
-    let vw = window.innerWidth;
-    let vh = window.innerHeight;
+  section05ChargeTimer: number;
+  hasBlastedSection05: boolean;
+  section05BlastImpactTimer: number;
+  lastChargeTickSec: number;
+  positronVisibility: number;
 
-    // Viewport mouse coordinates
-    let mouseX = -1000;
-    let mouseY = -1000;
-    let isMouseActive = false;
+  timelineActiveDiamond: number;
+  lastAudibleDiamond: number;
+  section06GlowTimer: number;
+  section06ChronometerMorph: number;
+  section06StickMorph: number;
+  stickJumpProgress: number;
+  jumpStartPos: { x: number; y: number };
+  jumpTargetPos: { x: number; y: number };
+  lastStickCardIndex: number;
+  stickFacingDir: number;
 
-    // Transformation states
-    let lensMorph = 0; // 0 = Positron, 1 = Fully formed Lens (Section 03)
-    let hasPlayedLensSound = false;
+  smileyMorph: number;
+  hasPlayedSmileySound: boolean;
+  section08StateTimer: number;
+  section08TargetX: number;
+  section08TargetY: number;
+  hireMeTargetX: number;
+  hireMeTargetY: number;
+  section08HoverActive: number;
+  isSection08Hovered: boolean;
 
-    let dartMorph = 0; // 0 = Positron, 1 = Dartboard (Section 04)
-    let dartboardStayTimer = 0; // Counts frames after dartboard arrival to create the ~2s delay before arrow strikes
-    let arrowFlight = 0; // 0 = not launched, 0->1 in flight, 1 = struck bullseye
-    let hasStruckDart = false;
-    let dartImpactTimer = 0;
+  fireflyMorph: number;
+  hasPlayedFireflySound: boolean;
+  section07TargetX: number;
+  section07TargetY: number;
+  fireflyPerchTimer: number;
+  isFireflyPerched: boolean;
+  fireflyPerchedX: number;
+  fireflyPerchedY: number;
 
-    // Section 05 Blast states (3-second countdown detonation & orange typography transformation)
-    let section05ChargeTimer = 0; // Counts frames in Section 05 (180 frames = 3 seconds @ 60fps)
-    let hasBlastedSection05 = false;
-    let section05BlastImpactTimer = 0;
-    let lastChargeTickSec = -1;
-    let positronVisibility = 1; // 1 = fully visible, 0 = completely disappears after blast
+  sparks: SparkParticle[];
+  shockwaves: Shockwave[];
+  confetti: ConfettiPiece[];
 
-    // Section 06 Timeline Waypoint & Quantum Stick Figure Character Tracking states
-    let timelineActiveDiamond = -1;
-    let lastAudibleDiamond = -1;
-    let section06GlowTimer = 0;
-    let section06ChronometerMorph = 0; // 0 = standard Positron, 1 = Precision Chronometer
-    let section06StickMorph = 0; // 0 = standard Positron/other, 1 = Stick Figure Character
-    let stickJumpProgress = 1.0; // 0 = start of run, 1 = landed on target card
-    let jumpStartPos = { x: 0, y: 0 };
-    let jumpTargetPos = { x: 0, y: 0 };
-    let lastStickCardIndex = -1;
-    let stickFacingDir = 1; // 1 = right, -1 = left
+  lastScrollY: number;
+  scrollDirection: "down" | "up";
 
-    // Section 08 Smiley Transformation states (Docked next to "solving?")
-    let smileyMorph = 0; // 0 = Positron, 1 = Radiant Quantum Smiley Face
-    let hasPlayedSmileySound = false;
-    let section08StateTimer = 0; // Dynamic timeline for envelope & paper airplane sequence
-    let section08TargetX = 0;
-    let section08TargetY = 0;
-    let hireMeTargetX = 0;
-    let hireMeTargetY = 0;
-    let section08HoverActive = 0; // Smooth interpolator for airplane hover wobble/takeoff
-    let isSection08Hovered = false; // Mouse hover detection state
+  photonLeader: {
+    x: number;
+    y: number;
+    vx: number;
+    vy: number;
+    baseAngle: number;
+    speed: number;
+    cursorLag: number;
+    orbitAngle: number;
+    orbitSpeed: number;
+    orbitRadius: number;
+    state: "IN_HERO" | "STRAINING" | "POSITRON";
+    strain: number;
+    tetherAnchorX: number;
+    tetherAnchorY: number;
+    recombinationTimer: number;
+    trail: ParticleTrail[];
+  };
 
-    // Section 07 Firefly states (Roaming inside section 07)
-    let fireflyMorph = 0; // 0 = Positron, 1 = Organic Pulsing Firefly
-    let hasPlayedFireflySound = false;
-    let section07TargetX = 0;
-    let section07TargetY = 0;
-    let fireflyPerchTimer = 0;
-    let isFireflyPerched = false;
-    let fireflyPerchedX = 0;
-    let fireflyPerchedY = 0;
+  photonFollowers: Array<{
+    normX: number;
+    normY: number;
+    x: number;
+    y: number;
+    vx: number;
+    vy: number;
+    baseAngle: number;
+    speed: number;
+    orbitAngle: number;
+    orbitSpeed: number;
+    orbitRadius: number;
+    cursorLag: number;
+    roamRadiusX: number;
+    roamRadiusY: number;
+    trail: ParticleTrail[];
+  }>;
+}
 
-    // Sparks & Shockwaves & Confetti pools
-    const sparks: SparkParticle[] = [];
-    const shockwaves: Shockwave[] = [];
-    const confetti: ConfettiPiece[] = [];
-
-    const handleResize = () => {
-      if (!canvas) return;
-      vw = window.innerWidth;
-      vh = window.innerHeight;
-      const dpr = Math.min(window.devicePixelRatio || 1, 2);
-      canvas.width = vw * dpr;
-      canvas.height = vh * dpr;
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    };
-
-    handleResize();
-    window.addEventListener("resize", handleResize);
-
-    // 4 Photons inside Hero Chamber - ALL EXACTLY IDENTICAL IN APPEARANCE
-    // Photon 0 is designated to exert strain and emerge into a Positron
-    const photonLeader = {
+function createInitialSimulationState(vw: number, vh: number): SimulationState {
+  return {
+    time: 0,
+    vw,
+    vh,
+    mouseX: -1000,
+    mouseY: -1000,
+    isMouseActive: false,
+    scrollEscapeFrames: 0,
+    lensMorph: 0,
+    hasPlayedLensSound: false,
+    dartMorph: 0,
+    dartboardStayTimer: 0,
+    arrowFlight: 0,
+    hasStruckDart: false,
+    dartImpactTimer: 0,
+    section05ChargeTimer: 0,
+    hasBlastedSection05: false,
+    section05BlastImpactTimer: 0,
+    lastChargeTickSec: -1,
+    positronVisibility: 1,
+    timelineActiveDiamond: -1,
+    lastAudibleDiamond: -1,
+    section06GlowTimer: 0,
+    section06ChronometerMorph: 0,
+    section06StickMorph: 0,
+    stickJumpProgress: 1.0,
+    jumpStartPos: { x: 0, y: 0 },
+    jumpTargetPos: { x: 0, y: 0 },
+    lastStickCardIndex: -1,
+    stickFacingDir: 1,
+    smileyMorph: 0,
+    hasPlayedSmileySound: false,
+    section08StateTimer: 0,
+    section08TargetX: 0,
+    section08TargetY: 0,
+    hireMeTargetX: 0,
+    hireMeTargetY: 0,
+    section08HoverActive: 0,
+    isSection08Hovered: false,
+    fireflyMorph: 0,
+    hasPlayedFireflySound: false,
+    section07TargetX: 0,
+    section07TargetY: 0,
+    fireflyPerchTimer: 0,
+    isFireflyPerched: false,
+    fireflyPerchedX: 0,
+    fireflyPerchedY: 0,
+    sparks: [],
+    shockwaves: [],
+    confetti: [],
+    lastScrollY: typeof window !== "undefined" ? window.scrollY : 0,
+    scrollDirection: "down",
+    photonLeader: {
       x: vw * 0.45,
       y: vh * 0.35,
       vx: 0,
@@ -171,15 +233,14 @@ export function RoamingPhotonBalls({ containerRef }: RoamingPhotonBallsProps) {
       orbitAngle: 0,
       orbitSpeed: 0.045,
       orbitRadius: 28,
-      state: "IN_HERO" as "IN_HERO" | "STRAINING" | "POSITRON",
+      state: "IN_HERO",
       strain: 0,
       tetherAnchorX: 0,
       tetherAnchorY: 0,
       recombinationTimer: 0,
-      trail: [] as ParticleTrail[],
-    };
-
-    const photonFollowers = [
+      trail: [],
+    },
+    photonFollowers: [
       {
         normX: 0.28,
         normY: 0.42,
@@ -195,7 +256,7 @@ export function RoamingPhotonBalls({ containerRef }: RoamingPhotonBallsProps) {
         cursorLag: 0.052,
         roamRadiusX: 130,
         roamRadiusY: 85,
-        trail: [] as ParticleTrail[],
+        trail: [],
       },
       {
         normX: 0.72,
@@ -212,7 +273,7 @@ export function RoamingPhotonBalls({ containerRef }: RoamingPhotonBallsProps) {
         cursorLag: 0.045,
         roamRadiusX: 150,
         roamRadiusY: 100,
-        trail: [] as ParticleTrail[],
+        trail: [],
       },
       {
         normX: 0.52,
@@ -229,49 +290,90 @@ export function RoamingPhotonBalls({ containerRef }: RoamingPhotonBallsProps) {
         cursorLag: 0.038,
         roamRadiusX: 160,
         roamRadiusY: 80,
-        trail: [] as ParticleTrail[],
+        trail: [],
       },
-    ];
+    ],
+  };
+}
 
-    // Scroll direction detection
-    let lastScrollY = window.scrollY;
-    let scrollDirection: "down" | "up" = "down";
+export function RoamingPhotonBalls({ containerRef }: RoamingPhotonBallsProps) {
+  const reducedMotion = useReducedMotion();
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const simRef = useRef<SimulationState | null>(null);
+
+  useEffect(() => {
+    if (reducedMotion) return;
+
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    let animId = 0;
+    const currentVw = window.innerWidth;
+    const currentVh = window.innerHeight;
+
+    if (!simRef.current) {
+      simRef.current = createInitialSimulationState(currentVw, currentVh);
+    }
+    const sim = simRef.current;
+    sim.vw = currentVw;
+    sim.vh = currentVh;
+
+    const sparks = sim.sparks;
+    const shockwaves = sim.shockwaves;
+    const confetti = sim.confetti;
+    const photonLeader = sim.photonLeader;
+    const photonFollowers = sim.photonFollowers;
+
+    const handleResize = () => {
+      if (!canvas) return;
+      sim.vw = window.innerWidth;
+      sim.vh = window.innerHeight;
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      canvas.width = sim.vw * dpr;
+      canvas.height = sim.vh * dpr;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    };
+
+    handleResize();
+    window.addEventListener("resize", handleResize);
 
     const handleScroll = () => {
       const currentY = window.scrollY;
-      const dy = currentY - lastScrollY;
+      const dy = currentY - sim.lastScrollY;
       if (Math.abs(dy) > 2) {
-        scrollDirection = dy > 0 ? "down" : "up";
+        sim.scrollDirection = dy > 0 ? "down" : "up";
       }
-      lastScrollY = currentY;
+      sim.lastScrollY = currentY;
     };
 
     window.addEventListener("scroll", handleScroll, { passive: true });
 
     const handlePointerMove = (e: PointerEvent) => {
-      mouseX = e.clientX;
-      mouseY = e.clientY;
-      isMouseActive = true;
+      sim.mouseX = e.clientX;
+      sim.mouseY = e.clientY;
+      sim.isMouseActive = true;
     };
 
     const handleTouchMove = (e: TouchEvent) => {
       if (e.touches.length > 0 && e.touches[0]) {
-        mouseX = e.touches[0].clientX;
-        mouseY = e.touches[0].clientY;
-        isMouseActive = true;
+        sim.mouseX = e.touches[0].clientX;
+        sim.mouseY = e.touches[0].clientY;
+        sim.isMouseActive = true;
       }
     };
 
     const handlePointerLeave = () => {
-      isMouseActive = false;
-      mouseX = -1000;
-      mouseY = -1000;
+      sim.isMouseActive = false;
+      sim.mouseX = -1000;
+      sim.mouseY = -1000;
       stopContainmentStrainSound();
     };
 
     const handleWindowClick = (e: MouseEvent) => {
-      const planeMorphVal = Math.max(0, Math.min(1, (section08StateTimer - 90) / 70));
-      if (smileyMorph > 0.5 && planeMorphVal > 0.5) {
+      const planeMorphVal = Math.max(0, Math.min(1, (sim.section08StateTimer - 90) / 70));
+      if (sim.smileyMorph > 0.5 && planeMorphVal > 0.5) {
         const dx = e.clientX - photonLeader.x;
         const dy = e.clientY - photonLeader.y;
         if (Math.hypot(dx, dy) < 32) {
@@ -279,7 +381,6 @@ export function RoamingPhotonBalls({ containerRef }: RoamingPhotonBallsProps) {
           if (hireMeBtnEl) {
             hireMeBtnEl.click();
 
-            // Trigger spectacular brand accent target sparks!
             const sparkAccent = getDynamicAccent();
             for (let i = 0; i < 18; i++) {
               const angle = Math.random() * Math.PI * 2;
@@ -296,7 +397,6 @@ export function RoamingPhotonBalls({ containerRef }: RoamingPhotonBallsProps) {
               });
             }
 
-            // Also trigger a neat brand accent shockwave on the canvas!
             shockwaves.push({
               x: photonLeader.x,
               y: photonLeader.y,
@@ -469,7 +569,7 @@ export function RoamingPhotonBalls({ containerRef }: RoamingPhotonBallsProps) {
       // Translate to Positron target position and scale (smoothly morphs to 0.65 for calibrated Chronometer/Compass dial in Section 06, 0.75 elsewhere)
       ctx.save();
       ctx.translate(posX, posY);
-      const s6Morph = Math.max(0, Math.min(1, section06ChronometerMorph));
+      const s6Morph = Math.max(0, Math.min(1, sim.section06ChronometerMorph));
       const effectivePositronScale = (1 - s6Morph) * 0.75 + s6Morph * 0.65;
       ctx.scale(effectivePositronScale, effectivePositronScale);
 
@@ -1231,7 +1331,7 @@ export function RoamingPhotonBalls({ containerRef }: RoamingPhotonBallsProps) {
       ctx.translate(x, y);
 
       // 1. Calculate entrance, pulse, and transformation progress
-      const entryProgress = Math.min(1, section08StateTimer / 45); // Elastic pop-up staggered entrance
+      const entryProgress = Math.min(1, sim.section08StateTimer / 45); // Elastic pop-up staggered entrance
       const popScale = Math.sin(entryProgress * Math.PI * 0.5) * 1.15 - 0.15 * (1 - entryProgress) * Math.sin(entryProgress * Math.PI * 1.5);
 
       // Heartbeat-like pulse wave synced to animTime
@@ -1239,10 +1339,10 @@ export function RoamingPhotonBalls({ containerRef }: RoamingPhotonBallsProps) {
       const heartbeat = 1.0 + 0.14 * Math.pow(Math.sin(heartSec), 8) + 0.05 * Math.pow(Math.sin(heartSec - 0.35), 8);
 
       // Morph factor to transition between envelope and paper airplane (starts at frame 50, completes by 100)
-      const planeMorph = Math.max(0, Math.min(1, (section08StateTimer - 50) / 50));
+      const planeMorph = Math.max(0, Math.min(1, (sim.section08StateTimer - 50) / 50));
 
       // Draw concentric liquid/photon ripples expanding outward during entry
-      if (section08StateTimer < 45 && morphFactor < 0.99) {
+      if (sim.section08StateTimer < 45 && morphFactor < 0.99) {
         for (let r = 0; r < 3; r++) {
           const rippleT = (entryProgress + r * 0.33) % 1.0;
           const rippleRadius = 14 + (1 - rippleT) * 45;
@@ -1374,31 +1474,31 @@ export function RoamingPhotonBalls({ containerRef }: RoamingPhotonBallsProps) {
         let planeScale = 1.05;
         let planeAngle = -Math.PI / 12 + Math.sin(animTime * 0.04) * 0.04;
 
-        if (section08StateTimer < 80) {
+        if (sim.section08StateTimer < 80) {
           planeScale = Math.min(1.05, planeMorph * 1.05);
-        } else if (section08StateTimer < 170) {
+        } else if (sim.section08StateTimer < 170) {
           planeScale = 1.08;
           // Calculate heading angle analytically along Bezier path
-          const t = (section08StateTimer - 80) / 90;
+          const t = (sim.section08StateTimer - 80) / 90;
           const u = 1 - t;
-          const cp1x = section08TargetX + 140;
-          const cp1y = section08TargetY - 30;
-          const cp2x = hireMeTargetX - 120;
-          const cp2y = hireMeTargetY - 100;
+          const cp1x = sim.section08TargetX + 140;
+          const cp1y = sim.section08TargetY - 30;
+          const cp2x = sim.hireMeTargetX - 120;
+          const cp2y = sim.hireMeTargetY - 100;
 
-          const tx = 3 * u * u * (cp1x - section08TargetX) + 6 * u * t * (cp2x - cp1x) + 3 * t * t * (hireMeTargetX - cp2x);
-          const ty = 3 * u * u * (cp1y - section08TargetY) + 6 * u * t * (cp2y - cp1y) + 3 * t * t * (hireMeTargetY - cp2y);
+          const tx = 3 * u * u * (cp1x - sim.section08TargetX) + 6 * u * t * (cp2x - cp1x) + 3 * t * t * (sim.hireMeTargetX - cp2x);
+          const ty = 3 * u * u * (cp1y - sim.section08TargetY) + 6 * u * t * (cp2y - cp1y) + 3 * t * t * (sim.hireMeTargetY - cp2y);
           planeAngle = Math.atan2(ty, tx);
         } else {
-          const landingProgress = section08StateTimer - 170;
+          const landingProgress = sim.section08StateTimer - 170;
           const bounceFactor = Math.max(0, 1 - landingProgress / 40);
           planeScale = 1.05 + Math.sin((animTime - 170) * 0.06) * 0.03 * (1 + bounceFactor * 0.15);
           planeAngle = -Math.PI / 12 + Math.sin((animTime - 170) * 0.04) * 0.04;
         }
 
         // Apply interactive hover feedback: scale boost and gentle hover wobble
-        planeScale *= (1.0 + 0.08 * section08HoverActive);
-        planeAngle += Math.sin(animTime * 0.28) * 0.1 * section08HoverActive;
+        planeScale *= (1.0 + 0.08 * sim.section08HoverActive);
+        planeAngle += Math.sin(animTime * 0.28) * 0.1 * sim.section08HoverActive;
 
         ctx.scale(planeScale, planeScale);
         ctx.rotate(planeAngle);
@@ -2088,7 +2188,13 @@ export function RoamingPhotonBalls({ containerRef }: RoamingPhotonBallsProps) {
     };
 
     const render = () => {
-      time += 1;
+      sim.time += 1;
+      const time = sim.time;
+      const vw = sim.vw;
+      const vh = sim.vh;
+      const mouseX = sim.mouseX;
+      const mouseY = sim.mouseY;
+      const isMouseActive = sim.isMouseActive;
       ctx.clearRect(0, 0, vw, vh);
 
       // Accurate Hero Section bounds in current viewport coordinates
@@ -2118,8 +2224,9 @@ export function RoamingPhotonBalls({ containerRef }: RoamingPhotonBallsProps) {
       // ==============================================================
       // SECTION 03 & SECTION 04 DETECTION & COORDINATE TARGETING
       // ==============================================================
-      // Section 03 Heading detection
+      // Section 03 Heading & Container detection ("03 / The Space I Operate In")
       const section03HeadingEl = document.getElementById("section-03-heading");
+      const section03El = document.getElementById("section-operating-space");
       let isSection03Active = false;
       let lensTargetX = 0;
       let lensTargetY = 0;
@@ -2127,7 +2234,10 @@ export function RoamingPhotonBalls({ containerRef }: RoamingPhotonBallsProps) {
 
       if (section03HeadingEl) {
         const headingRect = section03HeadingEl.getBoundingClientRect();
-        if (headingRect.top >= -80 && headingRect.top <= vh * 0.88) {
+        const sectionRect = section03El ? section03El.getBoundingClientRect() : headingRect;
+        
+        // Active when Section 03 container is in view and heading is visible
+        if (sectionRect.top <= vh * 0.82 && sectionRect.bottom >= 160 && headingRect.top >= -160) {
           isSection03Active = true;
           lensTargetX = headingRect.left + headingRect.width / 2;
           lensTargetY = headingRect.top - 46;
@@ -2300,30 +2410,30 @@ export function RoamingPhotonBalls({ containerRef }: RoamingPhotonBallsProps) {
           const s7MinY = Math.max(30, s7Rect.top + 30);
           const s7MaxY = Math.min(vh - 30, s7Rect.bottom - 30);
 
-          const currentDist = Math.hypot(photonLeader.x - section07TargetX, photonLeader.y - section07TargetY);
+          const currentDist = Math.hypot(photonLeader.x - sim.section07TargetX, photonLeader.y - sim.section07TargetY);
 
-          if (isFireflyPerched) {
-            fireflyPerchTimer--;
-            if (fireflyPerchTimer <= 0) {
-              isFireflyPerched = false;
+          if (sim.isFireflyPerched) {
+            sim.fireflyPerchTimer--;
+            if (sim.fireflyPerchTimer <= 0) {
+              sim.isFireflyPerched = false;
               // Pick a new target to fly to
-              section07TargetX = s7MinX + Math.random() * Math.max(20, s7MaxX - s7MinX);
-              section07TargetY = s7MinY + Math.random() * Math.max(20, s7MaxY - s7MinY);
+              sim.section07TargetX = s7MinX + Math.random() * Math.max(20, s7MaxX - s7MinX);
+              sim.section07TargetY = s7MinY + Math.random() * Math.max(20, s7MaxY - s7MinY);
             }
           } else {
-            if (section07TargetX === 0 || section07TargetY === 0) {
-              section07TargetX = s7MinX + Math.random() * Math.max(20, s7MaxX - s7MinX);
-              section07TargetY = s7MinY + Math.random() * Math.max(20, s7MaxY - s7MinY);
+            if (sim.section07TargetX === 0 || sim.section07TargetY === 0) {
+              sim.section07TargetX = s7MinX + Math.random() * Math.max(20, s7MaxX - s7MinX);
+              sim.section07TargetY = s7MinY + Math.random() * Math.max(20, s7MaxY - s7MinY);
             } else if (currentDist < 15) {
               // Reached target! Let's perch and rest for 150-250 frames (approx. 2.5 - 4 seconds)
-              isFireflyPerched = true;
-              fireflyPerchTimer = 150 + Math.floor(Math.random() * 100);
-              fireflyPerchedX = section07TargetX;
-              fireflyPerchedY = section07TargetY;
+              sim.isFireflyPerched = true;
+              sim.fireflyPerchTimer = 150 + Math.floor(Math.random() * 100);
+              sim.fireflyPerchedX = sim.section07TargetX;
+              sim.fireflyPerchedY = sim.section07TargetY;
             } else if (time % 360 === 0) {
               // Periodically find a new spot
-              section07TargetX = s7MinX + Math.random() * Math.max(20, s7MaxX - s7MinX);
-              section07TargetY = s7MinY + Math.random() * Math.max(20, s7MaxY - s7MinY);
+              sim.section07TargetX = s7MinX + Math.random() * Math.max(20, s7MaxX - s7MinX);
+              sim.section07TargetY = s7MinY + Math.random() * Math.max(20, s7MaxY - s7MinY);
             }
           }
         }
@@ -2333,10 +2443,10 @@ export function RoamingPhotonBalls({ containerRef }: RoamingPhotonBallsProps) {
       const section08El = document.getElementById("section-08");
       const smileyDockEl = document.getElementById("section-08-smiley-dock");
       let isSection08Active = false;
-      section08TargetX = 0;
-      section08TargetY = 0;
-      hireMeTargetX = 0;
-      hireMeTargetY = 0;
+      sim.section08TargetX = 0;
+      sim.section08TargetY = 0;
+      sim.hireMeTargetX = 0;
+      sim.hireMeTargetY = 0;
 
       if (section08El || smileyDockEl) {
         const s8Ref = section08El || smileyDockEl;
@@ -2344,33 +2454,33 @@ export function RoamingPhotonBalls({ containerRef }: RoamingPhotonBallsProps) {
           const s8Rect = s8Ref.getBoundingClientRect();
           if (s8Rect.top <= vh * 0.85 && s8Rect.bottom >= 0) {
             isSection08Active = true;
-            section08StateTimer++; // Increment active frame timeline
+            sim.section08StateTimer++; // Increment active frame timeline
 
             if (smileyDockEl) {
               const sdRect = smileyDockEl.getBoundingClientRect();
-              section08TargetX = sdRect.left + sdRect.width / 2;
-              section08TargetY = sdRect.top + sdRect.height / 2;
+              sim.section08TargetX = sdRect.left + sdRect.width / 2;
+              sim.section08TargetY = sdRect.top + sdRect.height / 2;
             } else {
-              section08TargetX = s8Rect.left + s8Rect.width / 2;
-              section08TargetY = Math.max(100, Math.min(vh - 100, s8Rect.top + 160));
+              sim.section08TargetX = s8Rect.left + s8Rect.width / 2;
+              sim.section08TargetY = Math.max(100, Math.min(vh - 100, s8Rect.top + 160));
             }
 
             // Detect coordinates of the primary Start a conversation / Hire me button
             const hireMeBtnEl = document.getElementById("section-08-hire-me-btn");
             if (hireMeBtnEl) {
               const hmRect = hireMeBtnEl.getBoundingClientRect();
-              hireMeTargetX = hmRect.left + hmRect.width / 2;
-              hireMeTargetY = hmRect.top - 24; // resting position 24px above the button
+              sim.hireMeTargetX = hmRect.left + hmRect.width / 2;
+              sim.hireMeTargetY = hmRect.top - 24; // resting position 24px above the button
             } else {
-              hireMeTargetX = section08TargetX;
-              hireMeTargetY = section08TargetY + 140; // fallback
+              sim.hireMeTargetX = sim.section08TargetX;
+              sim.hireMeTargetY = sim.section08TargetY + 140; // fallback
             }
           } else {
-            section08StateTimer = 0; // Reset timer when scrolled out
+            sim.section08StateTimer = 0; // Reset timer when scrolled out
           }
         }
       } else {
-        section08StateTimer = 0; // Reset timer if elements aren't present
+        sim.section08StateTimer = 0; // Reset timer if elements aren't present
       }
 
       // ==============================================================
@@ -2425,33 +2535,43 @@ export function RoamingPhotonBalls({ containerRef }: RoamingPhotonBallsProps) {
       photonLeader.baseAngle += photonLeader.speed;
       photonLeader.orbitAngle += photonLeader.orbitSpeed;
 
+      const isNearHeroTop = window.scrollY < 80 || heroRect.top >= -30;
+      const isInsideHeroChamber = (
+        photonLeader.x >= heroMinX - 25 &&
+        photonLeader.x <= heroMaxX + 25 &&
+        photonLeader.y >= heroMinY - 25 &&
+        photonLeader.y <= heroMaxY + 25
+      );
+
       // Handle Recombination when Positron returns deep into Hero chamber
       if (photonLeader.state === "POSITRON") {
-        if (isCursorInsideHero && mouseY > heroRect.top + 60 && mouseY < heroRect.bottom - 60) {
+        if (isNearHeroTop && (isInsideHeroChamber || isCursorInsideHero)) {
           photonLeader.recombinationTimer += 1;
-          if (photonLeader.recombinationTimer > 85) {
+          if (photonLeader.recombinationTimer > 35) {
             photonLeader.state = "IN_HERO";
             photonLeader.recombinationTimer = 0;
-            lensMorph = 0;
-            dartMorph = 0;
-            hasPlayedLensSound = false;
-            hasStruckDart = false;
-            arrowFlight = 0;
-            dartImpactTimer = 0;
-            section05ChargeTimer = 0;
-            hasBlastedSection05 = false;
-            section05BlastImpactTimer = 0;
-            lastChargeTickSec = -1;
-            positronVisibility = 1;
+            sim.lensMorph = 0;
+            sim.hasPlayedLensSound = false;
+            sim.dartMorph = 0;
+            sim.hasStruckDart = false;
+            sim.arrowFlight = 0;
+            sim.dartImpactTimer = 0;
+            sim.section05ChargeTimer = 0;
+            sim.hasBlastedSection05 = false;
+            sim.section05BlastImpactTimer = 0;
+            sim.lastChargeTickSec = -1;
+            sim.positronVisibility = 1;
+            sim.scrollEscapeFrames = 0;
+            stopContainmentStrainSound();
             playRecombinationSound();
 
             shockwaves.push({
               x: photonLeader.x,
               y: photonLeader.y,
-              radius: 5,
-              maxRadius: 100,
-              alpha: 0.9,
-              color: getDynamicAccent().rgba(0.85),
+              radius: 4,
+              maxRadius: 90,
+              alpha: 0.85,
+              color: getDynamicAccent().rgba(0.8),
             });
 
             for (let i = 0; i < 16; i++) {
@@ -2474,62 +2594,83 @@ export function RoamingPhotonBalls({ containerRef }: RoamingPhotonBallsProps) {
         }
       }
 
-      // STATE MACHINE: IN_HERO vs STRAINING vs POSITRON (with Lens & Dartboard morphs)
+      // STATE MACHINE: IN_HERO vs STRAINING vs POSITRON (with Dartboard morph)
       if (photonLeader.state !== "POSITRON") {
-        lensMorph = 0;
-        dartMorph = 0;
-        section06StickMorph = 0;
-        hasPlayedLensSound = false;
-        hasStruckDart = false;
-        arrowFlight = 0;
-        dartImpactTimer = 0;
-        section05ChargeTimer = 0;
-        hasBlastedSection05 = false;
-        section05BlastImpactTimer = 0;
-        lastChargeTickSec = -1;
+        sim.dartMorph = 0;
+        sim.section06StickMorph = 0;
+        sim.hasStruckDart = false;
+        sim.arrowFlight = 0;
+        sim.dartImpactTimer = 0;
+        sim.section05ChargeTimer = 0;
+        sim.hasBlastedSection05 = false;
+        sim.section05BlastImpactTimer = 0;
+        sim.lastChargeTickSec = -1;
 
         // Trigger break-free on cursor pulling outside hero OR on touch/scroll down past hero section
-        const isScrolledPastHero = window.scrollY > 80 || heroRect.bottom < vh * 0.75;
-        if ((!isCursorInsideHero && isMouseActive && mouseX > -500) || isScrolledPastHero) {
+        const isScrolledPastHero = window.scrollY > 60 || heroRect.bottom < vh * 0.75;
+        const isCursorPulling = !isCursorInsideHero && isMouseActive && mouseX > -500;
+
+        if (isCursorPulling || isScrolledPastHero) {
           // Cursor is OUTSIDE hero section or page is scrolled down -> Exert strain against boundary
           photonLeader.state = "STRAINING";
 
-          const effectiveTargetX = (mouseX > -500 && isMouseActive) ? mouseX : vw * 0.5;
-          const effectiveTargetY = (mouseY > -500 && isMouseActive) ? mouseY : heroMaxY + 160;
+          let effectiveTargetX = (mouseX > -500 && isMouseActive) ? mouseX : vw * 0.5;
+          let effectiveTargetY = (mouseY > -500 && isMouseActive) ? mouseY : heroMaxY + 140;
+
+          if (isScrolledPastHero && !isCursorPulling) {
+            effectiveTargetX = vw * 0.5;
+            effectiveTargetY = Math.max(heroMaxY + 120, vh * 0.65);
+          }
 
           const clampedAnchorX = Math.max(heroMinX, Math.min(heroMaxX, effectiveTargetX));
           const clampedAnchorY = Math.max(heroMinY, Math.min(heroMaxY, effectiveTargetY));
-          photonLeader.tetherAnchorX = clampedAnchorX;
-          photonLeader.tetherAnchorY = clampedAnchorY;
 
-          const pullDx = effectiveTargetX - clampedAnchorX;
-          const pullDy = effectiveTargetY - clampedAnchorY;
-          const pullDist = isScrolledPastHero ? 200 : Math.hypot(pullDx, pullDy);
+          if (photonLeader.tetherAnchorX === 0 && photonLeader.tetherAnchorY === 0) {
+            photonLeader.tetherAnchorX = clampedAnchorX;
+            photonLeader.tetherAnchorY = clampedAnchorY;
+          } else {
+            photonLeader.tetherAnchorX += (clampedAnchorX - photonLeader.tetherAnchorX) * 0.35;
+            photonLeader.tetherAnchorY += (clampedAnchorY - photonLeader.tetherAnchorY) * 0.35;
+          }
+
+          const pullDx = effectiveTargetX - photonLeader.tetherAnchorX;
+          const pullDy = effectiveTargetY - photonLeader.tetherAnchorY;
+          const pullDist = Math.hypot(pullDx, pullDy);
+          const pullAngle = Math.atan2(pullDy, pullDx);
 
           const BREAK_THRESHOLD = 140;
-          const strainFactor = Math.min(1, pullDist / BREAK_THRESHOLD);
+          let strainFactor = Math.min(1, pullDist / BREAK_THRESHOLD);
+
+          // If scrolled down, play a smooth 24-frame escape straining sequence so the user sees the animation
+          if (isScrolledPastHero) {
+            sim.scrollEscapeFrames += 1;
+            const scrollStrain = Math.min(1, sim.scrollEscapeFrames / 24);
+            strainFactor = Math.max(strainFactor, scrollStrain);
+          } else {
+            sim.scrollEscapeFrames = 0;
+          }
+
           photonLeader.strain = strainFactor;
 
           updateContainmentStrainSound(strainFactor);
 
           const stretchLen = Math.pow(strainFactor, 0.75) * 55;
-          const angle = Math.atan2(pullDy, pullDx);
-          const targetX = clampedAnchorX + Math.cos(angle) * stretchLen;
-          const targetY = clampedAnchorY + Math.sin(angle) * stretchLen;
+          const targetX = photonLeader.tetherAnchorX + Math.cos(pullAngle) * stretchLen;
+          const targetY = photonLeader.tetherAnchorY + Math.sin(pullAngle) * stretchLen;
 
           const jitterX = (Math.random() - 0.5) * strainFactor * 8.5;
           const jitterY = (Math.random() - 0.5) * strainFactor * 8.5;
 
-          photonLeader.vx += (targetX + jitterX - photonLeader.x) * 0.09;
-          photonLeader.vy += (targetY + jitterY - photonLeader.y) * 0.09;
-          photonLeader.vx *= 0.82;
-          photonLeader.vy *= 0.82;
+          photonLeader.vx += (targetX + jitterX - photonLeader.x) * 0.1;
+          photonLeader.vy += (targetY + jitterY - photonLeader.y) * 0.1;
+          photonLeader.vx *= 0.8;
+          photonLeader.vy *= 0.8;
 
           photonLeader.x += photonLeader.vx;
           photonLeader.y += photonLeader.vy;
 
           if (Math.random() < strainFactor * 0.75) {
-            const sparkAngle = angle + (Math.random() - 0.5) * 1.8;
+            const sparkAngle = pullAngle + (Math.random() - 0.5) * 1.8;
             const sparkSpeed = 2 + Math.random() * 5 * strainFactor;
             sparks.push({
               x: photonLeader.tetherAnchorX + (Math.random() - 0.5) * 6,
@@ -2544,11 +2685,20 @@ export function RoamingPhotonBalls({ containerRef }: RoamingPhotonBallsProps) {
           }
 
           // BREAK FREE & TRANSFORM INTO SOPHISTICATED POSITRON
-          if (pullDist >= BREAK_THRESHOLD || strainFactor >= 0.98) {
+          const isBreakMet = isScrolledPastHero
+            ? (sim.scrollEscapeFrames >= 24 || strainFactor >= 0.98)
+            : (pullDist >= BREAK_THRESHOLD || strainFactor >= 0.98);
+
+          if (isBreakMet) {
             photonLeader.state = "POSITRON";
             photonLeader.strain = 0;
+            sim.scrollEscapeFrames = 0;
             stopContainmentStrainSound();
             playPositronTransformationSound();
+
+            // Initial outward burst impulse
+            photonLeader.vx = Math.cos(pullAngle) * 5.5;
+            photonLeader.vy = Math.sin(pullAngle) * 5.5;
 
             const activeAcc = getDynamicAccent();
 
@@ -2589,6 +2739,9 @@ export function RoamingPhotonBalls({ containerRef }: RoamingPhotonBallsProps) {
           // Inside hero chamber, tracking cursor normally in 100% IDENTICAL appearance
           photonLeader.state = "IN_HERO";
           photonLeader.strain = 0;
+          sim.scrollEscapeFrames = 0;
+          photonLeader.tetherAnchorX = 0;
+          photonLeader.tetherAnchorY = 0;
           stopContainmentStrainSound();
 
           let targetX = heroRect.left + heroRect.width * 0.45 + Math.cos(photonLeader.baseAngle * 0.7) * 160;
@@ -2662,18 +2815,59 @@ export function RoamingPhotonBalls({ containerRef }: RoamingPhotonBallsProps) {
         let targetX = mouseX;
         let targetY = mouseY;
 
-        if (isSection04Active) {
+        if (isSection03Active) {
+          // ==========================================================
+          // SECTION 03 ACTIVE: TRANSFORM INTO OPTICAL LENS ABOVE HEADING
+          // ==========================================================
+          targetX = lensTargetX;
+          targetY = lensTargetY;
+
+          sim.lensMorph += (1 - sim.lensMorph) * 0.08;
+          sim.section06ChronometerMorph += (0 - sim.section06ChronometerMorph) * 0.12;
+          sim.section06StickMorph += (0 - sim.section06StickMorph) * 0.2;
+          sim.dartMorph += (0 - sim.dartMorph) * 0.085;
+          sim.fireflyMorph += (0 - sim.fireflyMorph) * 0.15;
+          sim.smileyMorph += (0 - sim.smileyMorph) * 0.15;
+
+          if (sim.dartMorph < 0.1) {
+            sim.hasStruckDart = false;
+            sim.arrowFlight = 0;
+            sim.dartboardStayTimer = 0;
+            sim.dartImpactTimer = 0;
+            confetti.length = 0;
+          }
+          if (sim.fireflyMorph < 0.1) sim.hasPlayedFireflySound = false;
+          if (sim.smileyMorph < 0.1) sim.hasPlayedSmileySound = false;
+
+          photonLeader.vx += (targetX - photonLeader.x) * 0.085;
+          photonLeader.vy += (targetY - photonLeader.y) * 0.085;
+          photonLeader.vx *= 0.72;
+          photonLeader.vy *= 0.72;
+
+          if (sim.lensMorph > 0.8 && !sim.hasPlayedLensSound) {
+            sim.hasPlayedLensSound = true;
+            playLensTransformationSound();
+
+            shockwaves.push({
+              x: targetX,
+              y: targetY,
+              radius: 4,
+              maxRadius: 75,
+              alpha: 0.85,
+              color: getDynamicAccent().rgba(0.9),
+            });
+          }
+        } else if (isSection04Active) {
           // ==========================================================
           // SECTION 04 ACTIVE: TRANSFORM INTO DARTBOARD IN FRONT OF "THREE"
           // ==========================================================
           targetX = dartTargetX;
           targetY = dartTargetY;
 
+          sim.lensMorph += (0 - sim.lensMorph) * 0.08;
           // Faster morph and quicker spring lock onto position in front of "Three"
-          dartMorph += (1 - dartMorph) * 0.16;
-          lensMorph += (0 - lensMorph) * 0.16;
-          section06StickMorph += (0 - section06StickMorph) * 0.25;
-          if (lensMorph < 0.1) hasPlayedLensSound = false;
+          sim.dartMorph += (1 - sim.dartMorph) * 0.16;
+          sim.section06StickMorph += (0 - sim.section06StickMorph) * 0.25;
 
           // Responsive spring to quickly lock onto position in front of "Three"
           photonLeader.vx += (targetX - photonLeader.x) * 0.18;
@@ -2682,18 +2876,18 @@ export function RoamingPhotonBalls({ containerRef }: RoamingPhotonBallsProps) {
           photonLeader.vy *= 0.65;
 
           // ARROW FLIGHT & BULLSEYE IMPACT TIMING (Fast snappy trigger after dartboard arrives)
-          if (dartMorph > 0.65) {
-            dartboardStayTimer += 1;
+          if (sim.dartMorph > 0.65) {
+            sim.dartboardStayTimer += 1;
           }
 
           // Snappy delay (~25 frames / ~0.4s @ 60fps), arrow zips in rapidly
-          if (dartboardStayTimer >= 25 && !hasStruckDart) {
-            arrowFlight += (1.08 - arrowFlight) * 0.38;
+          if (sim.dartboardStayTimer >= 25 && !sim.hasStruckDart) {
+            sim.arrowFlight += (1.08 - sim.arrowFlight) * 0.38;
 
-            if (arrowFlight >= 0.98) {
-              arrowFlight = 1.0;
-              hasStruckDart = true;
-              dartImpactTimer = 0;
+            if (sim.arrowFlight >= 0.98) {
+              sim.arrowFlight = 1.0;
+              sim.hasStruckDart = true;
+              sim.dartImpactTimer = 0;
               playDartBullseyeSound();
 
               // Pop celebratory confetti burst once upon Bull's Eye
@@ -2769,8 +2963,8 @@ export function RoamingPhotonBalls({ containerRef }: RoamingPhotonBallsProps) {
             }
           }
 
-          if (hasStruckDart) {
-            dartImpactTimer += 1;
+          if (sim.hasStruckDart) {
+            sim.dartImpactTimer += 1;
           }
         } else if (isSection05Active) {
           // ==========================================================
@@ -2779,22 +2973,21 @@ export function RoamingPhotonBalls({ containerRef }: RoamingPhotonBallsProps) {
           targetX = section05TargetX;
           targetY = section05TargetY;
 
-          section06ChronometerMorph += (0 - section06ChronometerMorph) * 0.12;
-          section06StickMorph += (0 - section06StickMorph) * 0.2;
-          lensMorph += (0 - lensMorph) * 0.085;
-          dartMorph += (0 - dartMorph) * 0.085;
-          fireflyMorph += (0 - fireflyMorph) * 0.15;
-          smileyMorph += (0 - smileyMorph) * 0.15;
+          sim.section06ChronometerMorph += (0 - sim.section06ChronometerMorph) * 0.12;
+          sim.section06StickMorph += (0 - sim.section06StickMorph) * 0.2;
+          sim.lensMorph += (0 - sim.lensMorph) * 0.085;
+          sim.dartMorph += (0 - sim.dartMorph) * 0.085;
+          sim.fireflyMorph += (0 - sim.fireflyMorph) * 0.15;
+          sim.smileyMorph += (0 - sim.smileyMorph) * 0.15;
 
-          if (lensMorph < 0.1) hasPlayedLensSound = false;
-          if (dartMorph < 0.1) {
-            hasStruckDart = false;
-            arrowFlight = 0;
-            dartboardStayTimer = 0;
-            dartImpactTimer = 0;
+          if (sim.dartMorph < 0.1) {
+            sim.hasStruckDart = false;
+            sim.arrowFlight = 0;
+            sim.dartboardStayTimer = 0;
+            sim.dartImpactTimer = 0;
           }
-          if (fireflyMorph < 0.1) hasPlayedFireflySound = false;
-          if (smileyMorph < 0.1) hasPlayedSmileySound = false;
+          if (sim.fireflyMorph < 0.1) sim.hasPlayedFireflySound = false;
+          if (sim.smileyMorph < 0.1) sim.hasPlayedSmileySound = false;
 
           // Smooth damped homing onto Section 05
           photonLeader.vx += (targetX - photonLeader.x) * 0.095;
@@ -2802,9 +2995,9 @@ export function RoamingPhotonBalls({ containerRef }: RoamingPhotonBallsProps) {
           photonLeader.vx *= 0.72;
           photonLeader.vy *= 0.72;
 
-          if (!hasBlastedSection05) {
-            section05ChargeTimer += 1;
-            const chargeProgress = Math.min(1, section05ChargeTimer / 180);
+          if (!sim.hasBlastedSection05) {
+            sim.section05ChargeTimer += 1;
+            const chargeProgress = Math.min(1, sim.section05ChargeTimer / 180);
 
             // Inward-rushing high energy sparks
             if (Math.random() < 0.35 + chargeProgress * 0.55) {
@@ -2824,19 +3017,19 @@ export function RoamingPhotonBalls({ containerRef }: RoamingPhotonBallsProps) {
             }
 
             // Audio countdown blips at each second mark (1s, 2s) and pre-blast tension (2.5s, 2.8s)
-            const currentSec = Math.floor(section05ChargeTimer / 60);
-            if (currentSec !== lastChargeTickSec && currentSec >= 1 && currentSec <= 2) {
-              lastChargeTickSec = currentSec;
+            const currentSec = Math.floor(sim.section05ChargeTimer / 60);
+            if (currentSec !== sim.lastChargeTickSec && currentSec >= 1 && currentSec <= 2) {
+              sim.lastChargeTickSec = currentSec;
               playPositronChargeTick(chargeProgress);
-            } else if (section05ChargeTimer === 150 || section05ChargeTimer === 168) {
+            } else if (sim.section05ChargeTimer === 150 || sim.section05ChargeTimer === 168) {
               playPositronChargeTick(chargeProgress);
             }
 
             // AT EXACTLY 3 SECONDS (180 frames @ 60fps) -> DETONATE PLASMA BLAST!
-            if (section05ChargeTimer >= 180) {
-              hasBlastedSection05 = true;
-              section05BlastImpactTimer = 0;
-              positronVisibility = 0; // Completely disappear upon detonation
+            if (sim.section05ChargeTimer >= 180) {
+              sim.hasBlastedSection05 = true;
+              sim.section05BlastImpactTimer = 0;
+              sim.positronVisibility = 0; // Completely disappear upon detonation
               photonLeader.trail = []; // Clear trail immediately so no residual ball/tail remains
               playPositronBlastSound();
 
@@ -2921,33 +3114,32 @@ export function RoamingPhotonBalls({ containerRef }: RoamingPhotonBallsProps) {
               }
             }
           } else {
-            section05BlastImpactTimer += 1;
+            sim.section05BlastImpactTimer += 1;
           }
         } else if (isSection06Active) {
           // ==========================================================
           // SECTION 06 (CAREER JOURNEY): STICK MAN ONLY
           // ==========================================================
-          positronVisibility += (1 - positronVisibility) * 0.12;
-          section06StickMorph += (1 - section06StickMorph) * 0.12;
+          sim.positronVisibility += (1 - sim.positronVisibility) * 0.12;
+          sim.section06StickMorph += (1 - sim.section06StickMorph) * 0.12;
 
-          section06ChronometerMorph += (0 - section06ChronometerMorph) * 0.12;
-          lensMorph += (0 - lensMorph) * 0.08;
-          dartMorph += (0 - dartMorph) * 0.08;
-          fireflyMorph += (0 - fireflyMorph) * 0.15;
-          smileyMorph += (0 - smileyMorph) * 0.15;
+          sim.section06ChronometerMorph += (0 - sim.section06ChronometerMorph) * 0.12;
+          sim.lensMorph += (0 - sim.lensMorph) * 0.08;
+          sim.dartMorph += (0 - sim.dartMorph) * 0.08;
+          sim.fireflyMorph += (0 - sim.fireflyMorph) * 0.15;
+          sim.smileyMorph += (0 - sim.smileyMorph) * 0.15;
 
-          if (lensMorph < 0.1) hasPlayedLensSound = false;
-          if (dartMorph < 0.1) {
-            hasStruckDart = false;
-            arrowFlight = 0;
-            dartboardStayTimer = 0;
-            dartImpactTimer = 0;
+          if (sim.dartMorph < 0.1) {
+            sim.hasStruckDart = false;
+            sim.arrowFlight = 0;
+            sim.dartboardStayTimer = 0;
+            sim.dartImpactTimer = 0;
           }
-          if (fireflyMorph < 0.1) hasPlayedFireflySound = false;
-          if (smileyMorph < 0.1) hasPlayedSmileySound = false;
+          if (sim.fireflyMorph < 0.1) sim.hasPlayedFireflySound = false;
+          if (sim.smileyMorph < 0.1) sim.hasPlayedSmileySound = false;
 
           // Track card waypoint transition and initiate edge-to-edge leap trajectory
-          if (closestDiamondIndex >= 0 && closestDiamondIndex !== lastStickCardIndex) {
+          if (sim.closestDiamondIndex >= 0 && sim.closestDiamondIndex !== sim.lastStickCardIndex) {
             let cardEdgeTargetX = section06TargetX;
             let cardEdgeTargetY = section06TargetY;
 
@@ -2962,15 +3154,15 @@ export function RoamingPhotonBalls({ containerRef }: RoamingPhotonBallsProps) {
                 : cRect.left + inset;
               cardEdgeTargetY = cRect.top;
 
-              stickFacingDir = cardEdgeTargetX >= photonLeader.x ? 1 : -1;
+              sim.stickFacingDir = cardEdgeTargetX >= photonLeader.x ? 1 : -1;
             } else {
-              stickFacingDir = section06TargetX >= photonLeader.x ? 1 : -1;
+              sim.stickFacingDir = section06TargetX >= photonLeader.x ? 1 : -1;
             }
 
-            jumpStartPos = { x: photonLeader.x, y: photonLeader.y };
-            jumpTargetPos = { x: cardEdgeTargetX, y: cardEdgeTargetY };
-            stickJumpProgress = 0;
-            lastStickCardIndex = closestDiamondIndex;
+            sim.jumpStartPos = { x: photonLeader.x, y: photonLeader.y };
+            sim.jumpTargetPos = { x: cardEdgeTargetX, y: cardEdgeTargetY };
+            sim.stickJumpProgress = 0;
+            sim.lastStickCardIndex = sim.closestDiamondIndex;
 
             playTimelineDiamondChime(closestDiamondIndex);
 
@@ -3002,25 +3194,25 @@ export function RoamingPhotonBalls({ containerRef }: RoamingPhotonBallsProps) {
           }
 
           // Execute Walk -> Crouch -> High Edge-to-Edge Parabolic Jump with Ease-In-Out
-          if (stickJumpProgress < 1.0) {
-            stickJumpProgress += 0.016; // Extended air time for a deliberate, graceful arc
-            if (stickJumpProgress >= 1.0) {
-              stickJumpProgress = 1.0;
-              photonLeader.x = jumpTargetPos.x;
-              photonLeader.y = jumpTargetPos.y;
+          if (sim.stickJumpProgress < 1.0) {
+            sim.stickJumpProgress += 0.016; // Extended air time for a deliberate, graceful arc
+            if (sim.stickJumpProgress >= 1.0) {
+              sim.stickJumpProgress = 1.0;
+              photonLeader.x = sim.jumpTargetPos.x;
+              photonLeader.y = sim.jumpTargetPos.y;
               photonLeader.vx = 0;
               photonLeader.vy = 0;
             } else {
               // Smooth sinusoidal ease-in-out easing curve for flight trajectory
-              const easeProgress = 0.5 - Math.cos(stickJumpProgress * Math.PI) * 0.5;
-              const baseX = jumpStartPos.x + (jumpTargetPos.x - jumpStartPos.x) * easeProgress;
-              const baseY = jumpStartPos.y + (jumpTargetPos.y - jumpStartPos.y) * easeProgress;
+              const easeProgress = 0.5 - Math.cos(sim.stickJumpProgress * Math.PI) * 0.5;
+              const baseX = sim.jumpStartPos.x + (sim.jumpTargetPos.x - sim.jumpStartPos.x) * easeProgress;
+              const baseY = sim.jumpStartPos.y + (sim.jumpTargetPos.y - sim.jumpStartPos.y) * easeProgress;
 
               // Airborne high parabolic jump curve across gap (0.30 to 0.80 phase)
               let arcY = 0;
-              if (stickJumpProgress >= 0.30 && stickJumpProgress < 0.80) {
-                const airProgress = (stickJumpProgress - 0.30) / 0.50;
-                const jumpDist = Math.hypot(jumpTargetPos.x - jumpStartPos.x, jumpTargetPos.y - jumpStartPos.y);
+              if (sim.stickJumpProgress >= 0.30 && sim.stickJumpProgress < 0.80) {
+                const airProgress = (sim.stickJumpProgress - 0.30) / 0.50;
+                const jumpDist = Math.hypot(sim.jumpTargetPos.x - sim.jumpStartPos.x, sim.jumpTargetPos.y - sim.jumpStartPos.y);
                 const arcHeight = Math.min(125, Math.max(55, jumpDist * 0.38));
                 arcY = -Math.sin(airProgress * Math.PI) * arcHeight;
               }
@@ -3064,27 +3256,26 @@ export function RoamingPhotonBalls({ containerRef }: RoamingPhotonBallsProps) {
           // ==========================================================
           // SECTION 07 ACTIVE: POSITRON BECOMES A BIOLUMINESCENT FIREFLY
           // ==========================================================
-          positronVisibility += (1 - positronVisibility) * 0.12;
+          sim.positronVisibility += (1 - sim.positronVisibility) * 0.12;
 
-          fireflyMorph += (1 - fireflyMorph) * 0.1;
-          section06ChronometerMorph += (0 - section06ChronometerMorph) * 0.12;
-          section06StickMorph += (0 - section06StickMorph) * 0.12;
-          smileyMorph += (0 - smileyMorph) * 0.1;
-          lensMorph += (0 - lensMorph) * 0.08;
-          dartMorph += (0 - dartMorph) * 0.08;
+          sim.fireflyMorph += (1 - sim.fireflyMorph) * 0.1;
+          sim.section06ChronometerMorph += (0 - sim.section06ChronometerMorph) * 0.12;
+          sim.section06StickMorph += (0 - sim.section06StickMorph) * 0.12;
+          sim.smileyMorph += (0 - sim.smileyMorph) * 0.1;
+          sim.lensMorph += (0 - sim.lensMorph) * 0.08;
+          sim.dartMorph += (0 - sim.dartMorph) * 0.08;
 
-          if (lensMorph < 0.1) hasPlayedLensSound = false;
-          if (dartMorph < 0.1) {
-            hasStruckDart = false;
-            arrowFlight = 0;
-            dartboardStayTimer = 0;
-            dartImpactTimer = 0;
+          if (sim.dartMorph < 0.1) {
+            sim.hasStruckDart = false;
+            sim.arrowFlight = 0;
+            sim.dartboardStayTimer = 0;
+            sim.dartImpactTimer = 0;
           }
-          if (smileyMorph < 0.1) hasPlayedSmileySound = false;
+          if (sim.smileyMorph < 0.1) sim.hasPlayedSmileySound = false;
 
           // Play Firefly Morph Sound once upon transformation
-          if (fireflyMorph > 0.82 && !hasPlayedFireflySound) {
-            hasPlayedFireflySound = true;
+          if (sim.fireflyMorph > 0.82 && !sim.hasPlayedFireflySound) {
+            sim.hasPlayedFireflySound = true;
             playFireflyMorphSound();
 
             // Emit some soft warm particles
@@ -3104,17 +3295,17 @@ export function RoamingPhotonBalls({ containerRef }: RoamingPhotonBallsProps) {
             }
           }
 
-          if (isFireflyPerched) {
+          if (sim.isFireflyPerched) {
             // High friction, snap perfectly still when perched with a tiny organic wiggle
-            targetX = fireflyPerchedX;
-            targetY = fireflyPerchedY;
+            targetX = sim.fireflyPerchedX;
+            targetY = sim.fireflyPerchedY;
             photonLeader.vx += (targetX - photonLeader.x) * 0.15;
             photonLeader.vy += (targetY - photonLeader.y) * 0.15;
             photonLeader.vx *= 0.5;
             photonLeader.vy *= 0.5;
           } else {
-            targetX = section07TargetX;
-            targetY = section07TargetY;
+            targetX = sim.section07TargetX;
+            targetY = sim.section07TargetY;
             // Extremely slow, graceful floating flight (reduced tracking by another 50%)
             photonLeader.vx += (targetX - photonLeader.x) * 0.0065;
             photonLeader.vy += (targetY - photonLeader.y) * 0.0065;
@@ -3141,26 +3332,25 @@ export function RoamingPhotonBalls({ containerRef }: RoamingPhotonBallsProps) {
           // ==========================================================
           // SECTION 08 ACTIVE: POSITRON DOCKS AND TRANSFORMS INTO SMILEY FACE
           // ==========================================================
-          positronVisibility += (1 - positronVisibility) * 0.12;
+          sim.positronVisibility += (1 - sim.positronVisibility) * 0.12;
 
-          smileyMorph += (1 - smileyMorph) * 0.1;
-          section06StickMorph += (0 - section06StickMorph) * 0.2;
-          fireflyMorph += (0 - fireflyMorph) * 0.1;
-          lensMorph += (0 - lensMorph) * 0.08;
-          dartMorph += (0 - dartMorph) * 0.08;
+          sim.smileyMorph += (1 - sim.smileyMorph) * 0.1;
+          sim.section06StickMorph += (0 - sim.section06StickMorph) * 0.2;
+          sim.fireflyMorph += (0 - sim.fireflyMorph) * 0.1;
+          sim.lensMorph += (0 - sim.lensMorph) * 0.08;
+          sim.dartMorph += (0 - sim.dartMorph) * 0.08;
 
-          if (lensMorph < 0.1) hasPlayedLensSound = false;
-          if (dartMorph < 0.1) {
-            hasStruckDart = false;
-            arrowFlight = 0;
-            dartboardStayTimer = 0;
-            dartImpactTimer = 0;
+          if (sim.dartMorph < 0.1) {
+            sim.hasStruckDart = false;
+            sim.arrowFlight = 0;
+            sim.dartboardStayTimer = 0;
+            sim.dartImpactTimer = 0;
           }
-          if (fireflyMorph < 0.1) hasPlayedFireflySound = false;
+          if (sim.fireflyMorph < 0.1) sim.hasPlayedFireflySound = false;
 
           // Play Smiley Morph Sound once upon docking/transforming
-          if (smileyMorph > 0.82 && !hasPlayedSmileySound) {
-            hasPlayedSmileySound = true;
+          if (sim.smileyMorph > 0.82 && !sim.hasPlayedSmileySound) {
+            sim.hasPlayedSmileySound = true;
             playSmileyMorphSound();
 
             // Joyful radiant sparkburst!
@@ -3181,8 +3371,8 @@ export function RoamingPhotonBalls({ containerRef }: RoamingPhotonBallsProps) {
 
             // Expanding celebration ring
             shockwaves.push({
-              x: section08TargetX,
-              y: section08TargetY,
+              x: sim.section08TargetX,
+              y: sim.section08TargetY,
               radius: 4,
               maxRadius: 55,
               alpha: 0.85,
@@ -3191,31 +3381,31 @@ export function RoamingPhotonBalls({ containerRef }: RoamingPhotonBallsProps) {
           }
 
           // Compute hover state if plane is formed
-          const planeMorphVal = Math.max(0, Math.min(1, (section08StateTimer - 50) / 50));
+          const planeMorphVal = Math.max(0, Math.min(1, (sim.section08StateTimer - 50) / 50));
           if (planeMorphVal > 0.5) {
             const dx = mouseX - photonLeader.x;
             const dy = mouseY - photonLeader.y;
-            isSection08Hovered = (Math.hypot(dx, dy) < 32);
+            sim.isSection08Hovered = (Math.hypot(dx, dy) < 32);
           } else {
-            isSection08Hovered = false;
+            sim.isSection08Hovered = false;
           }
-          section08HoverActive += ((isSection08Hovered ? 1 : 0) - section08HoverActive) * 0.12;
+          sim.section08HoverActive += ((sim.isSection08Hovered ? 1 : 0) - sim.section08HoverActive) * 0.12;
 
-          if (section08StateTimer < 80) {
+          if (sim.section08StateTimer < 80) {
             // Envelope pulse & morph into paper airplane at header dock (after SOLVING ?)
-            targetX = section08TargetX;
-            targetY = section08TargetY;
-          } else if (section08StateTimer < 170) {
+            targetX = sim.section08TargetX;
+            targetY = sim.section08TargetY;
+          } else if (sim.section08StateTimer < 170) {
             // Fast, dynamic glide flight: Smooth curved flight path down to the Start a Conversation button
-            const t = (section08StateTimer - 80) / 90;
+            const t = (sim.section08StateTimer - 80) / 90;
             const u = 1 - t;
-            const cp1x = section08TargetX + 140;
-            const cp1y = section08TargetY - 30;
-            const cp2x = hireMeTargetX - 120;
-            const cp2y = hireMeTargetY - 100;
+            const cp1x = sim.section08TargetX + 140;
+            const cp1y = sim.section08TargetY - 30;
+            const cp2x = sim.hireMeTargetX - 120;
+            const cp2y = sim.hireMeTargetY - 100;
 
-            const fx = u*u*u*section08TargetX + 3*u*u*t*cp1x + 3*u*t*t*cp2x + t*t*t*hireMeTargetX;
-            const fy = u*u*u*section08TargetY + 3*u*u*t*cp1y + 3*u*t*t*cp2y + t*t*t*hireMeTargetY;
+            const fx = u*u*u*sim.section08TargetX + 3*u*u*t*cp1x + 3*u*t*t*cp2x + t*t*t*sim.hireMeTargetX;
+            const fy = u*u*u*sim.section08TargetY + 3*u*u*t*cp1y + 3*u*t*t*cp2y + t*t*t*sim.hireMeTargetY;
 
             // Aerodynamic flight flutter simulation
             const flutterAmp = (1 - t) * 10;
@@ -3224,7 +3414,7 @@ export function RoamingPhotonBalls({ containerRef }: RoamingPhotonBallsProps) {
             targetY = fy - Math.abs(Math.cos(flutterFreq)) * flutterAmp * 1.1;
 
             // Emit faint glowing vapor trail particle effect
-            if (section08StateTimer % 2 === 0) {
+            if (sim.section08StateTimer % 2 === 0) {
               const trailAngle = Math.random() * Math.PI * 2;
               const trailSpeed = 0.1 + Math.random() * 0.4;
               sparks.push({
@@ -3240,11 +3430,11 @@ export function RoamingPhotonBalls({ containerRef }: RoamingPhotonBallsProps) {
             }
           } else {
             // Landed gently above Start a conversation button with crisp settle bounce
-            const landingProgress = section08StateTimer - 170;
+            const landingProgress = sim.section08StateTimer - 170;
             const bounceY = Math.exp(-0.08 * landingProgress) * Math.sin(landingProgress * 0.2) * 14;
-            const hoverYOffset = -10 * section08HoverActive;
-            targetX = hireMeTargetX;
-            targetY = hireMeTargetY + bounceY + hoverYOffset + Math.sin((time - 170) * 0.05) * 1.5;
+            const hoverYOffset = -10 * sim.section08HoverActive;
+            targetX = sim.hireMeTargetX;
+            targetY = sim.hireMeTargetY + bounceY + hoverYOffset + Math.sin((time - 170) * 0.05) * 1.5;
           }
 
           // Clean, high-precision snapping onto dock
@@ -3268,73 +3458,33 @@ export function RoamingPhotonBalls({ containerRef }: RoamingPhotonBallsProps) {
               color: "#d1651c",
             });
           }
-        } else if (isSection03Active) {
-          // ==========================================================
-          // SECTION 03 ACTIVE: TRANSFORM INTO LENS ABOVE HEADING
-          // ==========================================================
-          targetX = lensTargetX;
-          targetY = lensTargetY;
-
-          lensMorph += (1 - lensMorph) * 0.075;
-          section06StickMorph += (0 - section06StickMorph) * 0.2;
-          dartMorph += (0 - dartMorph) * 0.085;
-          fireflyMorph += (0 - fireflyMorph) * 0.15;
-          smileyMorph += (0 - smileyMorph) * 0.15;
-
-          if (dartMorph < 0.1) {
-            hasStruckDart = false;
-            arrowFlight = 0;
-            dartboardStayTimer = 0;
-            dartImpactTimer = 0;
-            confetti.length = 0;
-          }
-          if (fireflyMorph < 0.1) hasPlayedFireflySound = false;
-          if (smileyMorph < 0.1) hasPlayedSmileySound = false;
-
-          photonLeader.vx += (targetX - photonLeader.x) * 0.085;
-          photonLeader.vy += (targetY - photonLeader.y) * 0.085;
-          photonLeader.vx *= 0.72;
-          photonLeader.vy *= 0.72;
-
-          if (lensMorph > 0.82 && !hasPlayedLensSound) {
-            hasPlayedLensSound = true;
-            playLensTransformationSound();
-
-            shockwaves.push({
-              x: targetX,
-              y: targetY,
-              radius: 4,
-              maxRadius: 75,
-              alpha: 0.85,
-              color: getDynamicAccent().rgba(0.9),
-            });
-          }
         } else {
           // ==========================================================
           // GENERAL ROAMING POSITRON FLIGHT
           // ==========================================================
-          lensMorph += (0 - lensMorph) * 0.08;
-          dartMorph += (0 - dartMorph) * 0.08;
-          section06StickMorph += (0 - section06StickMorph) * 0.2;
-          fireflyMorph += (0 - fireflyMorph) * 0.15;
-          smileyMorph += (0 - smileyMorph) * 0.15;
+          sim.lensMorph += (0 - sim.lensMorph) * 0.08;
+          sim.dartMorph += (0 - sim.dartMorph) * 0.08;
+          sim.section06StickMorph += (0 - sim.section06StickMorph) * 0.2;
+          sim.fireflyMorph += (0 - sim.fireflyMorph) * 0.15;
+          sim.smileyMorph += (0 - sim.smileyMorph) * 0.15;
 
-          if (lensMorph < 0.1) hasPlayedLensSound = false;
-          if (dartMorph < 0.1) {
-            hasStruckDart = false;
-            arrowFlight = 0;
-            dartboardStayTimer = 0;
-            dartImpactTimer = 0;
+          if (sim.lensMorph < 0.05) sim.hasPlayedLensSound = false;
+
+          if (sim.dartMorph < 0.1) {
+            sim.hasStruckDart = false;
+            sim.arrowFlight = 0;
+            sim.dartboardStayTimer = 0;
+            sim.dartImpactTimer = 0;
             confetti.length = 0;
           }
-          if (fireflyMorph < 0.1) hasPlayedFireflySound = false;
-          if (smileyMorph < 0.1) hasPlayedSmileySound = false;
+          if (sim.fireflyMorph < 0.1) sim.hasPlayedFireflySound = false;
+          if (sim.smileyMorph < 0.1) sim.hasPlayedSmileySound = false;
 
-          // Determine if user has scrolled past Hero into the case study / lens and downstream sections
+          // Determine if user has scrolled past Hero into downstream sections
           const isScrolledPastHeroAndLens = (window.scrollY > 450) || (heroRect.bottom < -50);
 
           if (isScrolledPastHeroAndLens) {
-            // POST-LENS & DOWNSTREAM SECTIONS: Follow the right-hand scroll rail / scroll progress smoothly!
+            // DOWNSTREAM SECTIONS: Follow the right-hand scroll rail / scroll progress smoothly!
             const docHeight = Math.max(
               document.documentElement.scrollHeight,
               document.body.scrollHeight,
@@ -3436,10 +3586,10 @@ export function RoamingPhotonBalls({ containerRef }: RoamingPhotonBallsProps) {
         ctx.stroke();
       }
 
-      // Render Leader Particle / Positron / Lens / Dartboard
+      // Render Leader Particle / Positron / Dartboard
       if (photonLeader.state !== "POSITRON") {
         const strainAngle = photonLeader.state === "STRAINING"
-          ? Math.atan2(mouseY - photonLeader.tetherAnchorY, mouseX - photonLeader.tetherAnchorX)
+          ? Math.atan2(photonLeader.y - photonLeader.tetherAnchorY, photonLeader.x - photonLeader.tetherAnchorX)
           : 0;
 
         renderIdenticalPhoton(
@@ -3450,7 +3600,7 @@ export function RoamingPhotonBalls({ containerRef }: RoamingPhotonBallsProps) {
           strainAngle
         );
       } else {
-        const combinedMorph = Math.min(1, lensMorph + dartMorph + fireflyMorph + smileyMorph);
+        const combinedMorph = Math.min(1, sim.lensMorph + sim.dartMorph + sim.fireflyMorph + sim.smileyMorph);
 
         // 1. Positron Body (Disappears when blasted in Section 05, hidden in Section 06 where stickman is active, visible elsewhere)
         renderSophisticatedPositron(
@@ -3458,10 +3608,10 @@ export function RoamingPhotonBalls({ containerRef }: RoamingPhotonBallsProps) {
           photonLeader.y,
           photonLeader.trail,
           combinedMorph,
-          isSection05Active && !hasBlastedSection05,
-          Math.min(1, section05ChargeTimer / 180),
-          isSection05Active && hasBlastedSection05,
-          isSection06Active ? (1 - section06StickMorph) : (hasBlastedSection05 ? 0 : positronVisibility),
+          isSection05Active && !sim.hasBlastedSection05,
+          Math.min(1, sim.section05ChargeTimer / 180),
+          isSection05Active && sim.hasBlastedSection05,
+          isSection06Active ? (1 - sim.section06StickMorph) : (sim.hasBlastedSection05 ? 0 : sim.positronVisibility),
           false
         );
 
@@ -3469,7 +3619,7 @@ export function RoamingPhotonBalls({ containerRef }: RoamingPhotonBallsProps) {
         renderSophisticatedLens(
           photonLeader.x,
           photonLeader.y,
-          lensMorph,
+          sim.lensMorph,
           headingTop03
         );
 
@@ -3477,17 +3627,17 @@ export function RoamingPhotonBalls({ containerRef }: RoamingPhotonBallsProps) {
         renderDartboardAndArrow(
           photonLeader.x,
           photonLeader.y,
-          dartMorph,
-          arrowFlight,
-          hasStruckDart,
-          dartImpactTimer
+          sim.dartMorph,
+          sim.arrowFlight,
+          sim.hasStruckDart,
+          sim.dartImpactTimer
         );
 
         // 4. Bioluminescent Firefly (Section 07)
         renderSophisticatedFirefly(
           photonLeader.x,
           photonLeader.y,
-          fireflyMorph,
+          sim.fireflyMorph,
           time
         );
 
@@ -3495,20 +3645,20 @@ export function RoamingPhotonBalls({ containerRef }: RoamingPhotonBallsProps) {
         renderSophisticatedSmiley(
           photonLeader.x,
           photonLeader.y,
-          smileyMorph,
+          sim.smileyMorph,
           time
         );
 
         // 6. Classic Running Stickman Character (Strictly in Section 06 only)
-        if (isSection06Active && section06StickMorph > 0.005) {
+        if (isSection06Active && sim.section06StickMorph > 0.005) {
           renderStickFigureCharacter(
             photonLeader.x,
             photonLeader.y,
-            section06StickMorph,
-            stickJumpProgress,
-            lastStickCardIndex,
+            sim.section06StickMorph,
+            sim.stickJumpProgress,
+            sim.lastStickCardIndex,
             time,
-            stickFacingDir
+            sim.stickFacingDir
           );
         }
       }
