@@ -75,7 +75,6 @@ export function RoamingPhotonBalls({ containerRef }: RoamingPhotonBallsProps) {
 
   useEffect(() => {
     if (reducedMotion) return;
-    if (typeof window !== "undefined" && window.innerWidth < 768) return;
 
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -255,6 +254,14 @@ export function RoamingPhotonBalls({ containerRef }: RoamingPhotonBallsProps) {
       isMouseActive = true;
     };
 
+    const handleTouchMove = (e: TouchEvent) => {
+      if (e.touches.length > 0 && e.touches[0]) {
+        mouseX = e.touches[0].clientX;
+        mouseY = e.touches[0].clientY;
+        isMouseActive = true;
+      }
+    };
+
     const handlePointerLeave = () => {
       isMouseActive = false;
       mouseX = -1000;
@@ -304,6 +311,8 @@ export function RoamingPhotonBalls({ containerRef }: RoamingPhotonBallsProps) {
     };
 
     window.addEventListener("pointermove", handlePointerMove, { passive: true });
+    window.addEventListener("touchstart", handleTouchMove, { passive: true });
+    window.addEventListener("touchmove", handleTouchMove, { passive: true });
     window.addEventListener("pointerleave", handlePointerLeave);
     window.addEventListener("click", handleWindowClick);
 
@@ -2479,18 +2488,23 @@ export function RoamingPhotonBalls({ containerRef }: RoamingPhotonBallsProps) {
         section05BlastImpactTimer = 0;
         lastChargeTickSec = -1;
 
-        if (!isCursorInsideHero && isMouseActive && mouseX > -500) {
-          // Cursor is OUTSIDE hero section -> Exert strain against boundary
+        // Trigger break-free on cursor pulling outside hero OR on touch/scroll down past hero section
+        const isScrolledPastHero = window.scrollY > 80 || heroRect.bottom < vh * 0.75;
+        if ((!isCursorInsideHero && isMouseActive && mouseX > -500) || isScrolledPastHero) {
+          // Cursor is OUTSIDE hero section or page is scrolled down -> Exert strain against boundary
           photonLeader.state = "STRAINING";
 
-          const clampedAnchorX = Math.max(heroMinX, Math.min(heroMaxX, mouseX));
-          const clampedAnchorY = Math.max(heroMinY, Math.min(heroMaxY, mouseY));
+          const effectiveTargetX = (mouseX > -500 && isMouseActive) ? mouseX : vw * 0.5;
+          const effectiveTargetY = (mouseY > -500 && isMouseActive) ? mouseY : heroMaxY + 160;
+
+          const clampedAnchorX = Math.max(heroMinX, Math.min(heroMaxX, effectiveTargetX));
+          const clampedAnchorY = Math.max(heroMinY, Math.min(heroMaxY, effectiveTargetY));
           photonLeader.tetherAnchorX = clampedAnchorX;
           photonLeader.tetherAnchorY = clampedAnchorY;
 
-          const pullDx = mouseX - clampedAnchorX;
-          const pullDy = mouseY - clampedAnchorY;
-          const pullDist = Math.hypot(pullDx, pullDy);
+          const pullDx = effectiveTargetX - clampedAnchorX;
+          const pullDy = effectiveTargetY - clampedAnchorY;
+          const pullDist = isScrolledPastHero ? 200 : Math.hypot(pullDx, pullDy);
 
           const BREAK_THRESHOLD = 140;
           const strainFactor = Math.min(1, pullDist / BREAK_THRESHOLD);
@@ -3608,6 +3622,8 @@ export function RoamingPhotonBalls({ containerRef }: RoamingPhotonBallsProps) {
       window.removeEventListener("scroll", handleScroll);
       window.removeEventListener("resize", handleResize);
       window.removeEventListener("pointermove", handlePointerMove);
+      window.removeEventListener("touchstart", handleTouchMove);
+      window.removeEventListener("touchmove", handleTouchMove);
       window.removeEventListener("pointerleave", handlePointerLeave);
       window.removeEventListener("click", handleWindowClick);
       stopContainmentStrainSound();
